@@ -14,11 +14,11 @@ public class ExaminationImpl implements Examination {
     public void addScore(Score score) {
         String studentKey = getStudentKey(score.name(), score.subject());
 
-        // Обновляем основное хранилище
+        
         studentScores.computeIfAbsent(score.name(), k -> new HashMap<>())
                 .put(score.subject(), score);
 
-        // Обновляем кеш отличников, если оценка отличная
+        
         if (score.score() == 5) {
             excellentScores.addFirst(score);
             if (excellentScores.size() > 5) {
@@ -26,7 +26,7 @@ public class ExaminationImpl implements Examination {
             }
         }
 
-        // Помечаем кеш средних оценок как невалидный
+       
         cacheInvalid = true;
     }
 
@@ -41,12 +41,12 @@ public class ExaminationImpl implements Examination {
 
     @Override
     public double getAverageForSubject(String subject) {
-        // Если кеш валиден, возвращаем из кеша
+       
         if (!cacheInvalid && averageScoreCache.containsKey(subject)) {
             return averageScoreCache.get(subject);
         }
 
-        // Пересчитываем среднее
+        
         double sum = 0;
         int count = 0;
 
@@ -60,7 +60,7 @@ public class ExaminationImpl implements Examination {
 
         double average = count == 0 ? 0 : sum / count;
 
-        // Обновляем кеш
+      
         averageScoreCache.put(subject, average);
         return average;
     }
