@@ -1,0 +1,121 @@
+package com.productstar.students.src.test.java.org.example.students;
+
+import com.productstar.students.src.main.java.org.example.students.Examination;
+import com.productstar.students.src.main.java.org.example.students.ExaminationImpl;
+import com.productstar.students.src.main.java.org.example.students.Score;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.util.Collection;
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+
+public class ExaminationTest {
+
+    private Examination examination;
+
+    @BeforeEach
+    public void setUp() {
+        examination = new ExaminationImpl();
+    }
+
+    @Test
+    public void testAddAndGetScore() {
+        Score score1 = new Score("Ivan", "Math", 4);
+        examination.addScore(score1);
+
+        assertEquals(score1, examination.getScore("Ivan", "Math"));
+        assertNull(examination.getScore("Petr", "Math"));
+    }
+
+    @Test
+    public void testUpdateScore() {
+        Score score1 = new Score("Ivan", "Math", 3);
+        Score score2 = new Score("Ivan", "Math", 5);
+
+        examination.addScore(score1);
+        examination.addScore(score2);
+
+        assertEquals(score2, examination.getScore("Ivan", "Math"));
+    }
+
+    @Test
+    public void testGetAverageForSubject() {
+        examination.addScore(new Score("Ivan", "Math", 3));
+        examination.addScore(new Score("Petr", "Math", 5));
+        examination.addScore(new Score("Anna", "Physics", 4));
+
+        assertEquals(4.0, examination.getAverageForSubject("Math"));
+        assertEquals(4.0, examination.getAverageForSubject("Physics"));
+        assertEquals(0.0, examination.getAverageForSubject("Chemistry"));
+    }
+
+    @Test
+    public void testMultipleSubmissionsStudentNames() {
+        examination.addScore(new Score("Ivan", "Math", 3));
+        examination.addScore(new Score("Ivan", "Physics", 4));
+        examination.addScore(new Score("Petr", "Math", 5));
+
+        Set<String> result = examination.multipleSubmissionsStudentNames();
+
+        assertEquals(1, result.size());
+        assertTrue(result.contains("Ivan"));
+    }
+
+    @Test
+    public void testLastFiveStudentsWithExcellentMarkOnAnySubject() {
+        examination.addScore(new Score("Ivan", "Math", 5));
+        examination.addScore(new Score("Petr", "Physics", 5));
+        examination.addScore(new Score("Anna", "Chemistry", 5));
+        examination.addScore(new Score("Olga", "Biology", 5));
+        examination.addScore(new Score("Sergey", "Math", 5));
+        examination.addScore(new Score("Dmitry", "Physics", 5));
+
+        Set<String> result = examination.lastFiveStudentsWithExcellentMarkOnAnySubject();
+
+        assertEquals(5, result.size());
+        assertTrue(result.contains("Dmitry"));
+        assertTrue(result.contains("Sergey"));
+        assertTrue(result.contains("Olga"));
+        assertTrue(result.contains("Anna"));
+        assertTrue(result.contains("Petr"));
+        assertFalse(result.contains("Ivan")); // Первый вышел за пределы 5
+    }
+
+    @Test
+    public void testGetAllScores() {
+        examination.addScore(new Score("Ivan", "Math", 3));
+        examination.addScore(new Score("Petr", "Physics", 4));
+
+        Collection<Score> result = examination.getAllScores();
+
+        assertEquals(2, result.size());
+        assertTrue(result.stream().anyMatch(s -> s.name().equals("Ivan") && s.subject().equals("Math")));
+        assertTrue(result.stream().anyMatch(s -> s.name().equals("Petr") && s.subject().equals("Physics")));
+    }
+
+    @Test
+    public void testCacheForAverageScores() {
+        ExaminationImpl impl = (ExaminationImpl) examination;
+
+        impl.addScore(new Score("Ivan", "Math", 3));
+        impl.addScore(new Score("Petr", "Math", 5));
+
+        // Первый вызов - кеш должен быть заполнен
+        double avg1 = impl.getAverageForSubject("Math");
+        assertEquals(4.0, avg1);
+
+        // Проверяем, что кеш содержит правильное значение
+        assertTrue(impl.getAverageScoreCache().containsKey("Math"));
+        assertEquals(4.0, impl.getAverageScoreCache().get("Math"));
+
+        // Добавляем новую оценку - кеш должен стать невалидным
+        impl.addScore(new Score("Anna", "Math", 4));
+
+        // Второй вызов - кеш должен быть пересчитан
+        double avg2 = impl.getAverageForSubject("Math");
+        assertEquals(4.0, avg2); // (3+5+4)/3 = 4.0
+    }
+}
