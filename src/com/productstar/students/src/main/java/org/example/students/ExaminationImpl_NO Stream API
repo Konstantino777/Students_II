@@ -1,0 +1,108 @@
+import java.util.*;
+
+/**
+ * Реализация интерфейса для учета успеваемости студентов без использования Stream API.
+ * Поддерживает хранение последних оценок, расчет статистики и кеширование.
+ */
+public class ExaminationImpl implements Examination {
+    // Основное хранилище: имя студента -> (предмет -> оценка)
+    private final Map<String, Map<String, Score>> studentScores = new HashMap<>();
+    
+    // Кеш средних оценок по предметам
+    private final Map<String, Double> averageScoreCache = new HashMap<>();
+    
+    // Очередь последних отличников (оценка 5)
+    private final Deque<Score> excellentScores = new ArrayDeque<>();
+    
+    // Максимальное количество хранимых отличников
+    private static final int EXCELLENT_STUDENTS_LIMIT = 5;
+
+    @Override
+    public void addScore(Score score) {
+        Objects.requireNonNull(score, "Score cannot be null");
+        
+        // Обновляем основное хранилище
+        if (!studentScores.containsKey(score.name())) {
+            studentScores.put(score.name(), new HashMap<>());
+        }
+        studentScores.get(score.name()).put(score.subject(), score);
+        
+        // Обновляем кеш отличников
+        if (score.score() == 5) {
+            excellentScores.addFirst(score);
+            if (excellentScores.size() > EXCELLENT_STUDENTS_LIMIT) {
+                excellentScores.removeLast();
+            }
+        }
+        
+        // Сбрасываем кеш средних для этого предмета
+        averageScoreCache.remove(score.subject());
+    }
+
+    @Override
+    public Score getScore(String name, String subject) {
+        Map<String, Score> studentSubjects = studentScores.get(name);
+        return studentSubjects != null ? studentSubjects.get(subject) : null;
+    }
+
+    @Override
+    public double getAverageForSubject(String subject) {
+        // Возвращаем из кеша, если значение есть
+        Double cachedAverage = averageScoreCache.get(subject);
+        if (cachedAverage != null) {
+            return cachedAverage;
+        }
+        
+        // Вычисляем среднее
+        double sum = 0;
+        int count = 0;
+        
+        for (Map<String, Score> student : studentScores.values()) {
+            Score score = student.get(subject);
+            if (score != null) {
+                sum += score.score();
+                count++;
+            }
+        }
+        
+        double average = count == 0 ? 0 : sum / count;
+        
+        // Сохраняем в кеш
+        averageScoreCache.put(subject, average);
+        return average;
+    }
+
+    @Override
+    public Set<String> multipleSubmissionsStudentNames() {
+        Set<String> result = new HashSet<>();
+        for (Map.Entry<String, Map<String, Score>> entry : studentScores.entrySet()) {
+            if (entry.getValue().size() > 1) {
+                result.add(entry.getKey());
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public Set<String> lastFiveStudentsWithExcellentMarkOnAnySubject() {
+        Set<String> result = new LinkedHashSet<>(); // Для сохранения порядка
+        int count = 0;
+        for (Score score : excellentScores) {
+            if (count >= EXCELLENT_STUDENTS_LIMIT) {
+                break;
+            }
+            result.add(score.name());
+            count++;
+        }
+        return result;
+    }
+
+    @Override
+    public Collection<Score> getAllScores() {
+        List<Score> allScores = new ArrayList<>();
+        for (Map<String, Score> student : studentScores.values()) {
+            allScores.addAll(student.values());
+        }
+        return Collections.unmodifiableList(allScores);
+    }
+}
